@@ -1,11 +1,64 @@
 export type MoldType = 'pendant' | 'hairclip' | 'ring' | 'coaster'
 export type MaterialCategory = 'driedFlower' | 'glitter' | 'goldFoil' | 'colorPowder'
+export type StageType = 'base' | 'material' | 'sealant' | 'correction'
+export type RiskLevel = 'low' | 'medium' | 'high'
+
+export interface Stage {
+  id: string
+  name: string
+  type: StageType
+  order: number
+  layerIds: string[]
+  glueMl: number
+  thickness: number
+  waitHours: number
+  ambientTemp: number
+  materialBatch: string
+  notes: string
+}
+
+export interface StageCuringInfo {
+  stageId: string
+  stageName: string
+  stageType: StageType
+  hours: number
+  thickness: number
+  resinMl: number
+  ambientTemp: number
+  riskLevel: RiskLevel
+  riskMessages: string[]
+  suggestions: string[]
+}
+
+export interface StageComparisonData {
+  stageName: string
+  stageType: StageType
+  resinDiff: number
+  hoursDiff: number
+  thicknessDiff: number
+  tempDiff: number
+  risksA: string[]
+  risksB: string[]
+}
+
+export interface SchemeComparison {
+  schemeAName: string
+  schemeBName: string
+  totalResinDiff: number
+  totalHoursDiff: number
+  totalThicknessDiff: number
+  totalMaterialDiff: { category: MaterialCategory; countA: number; countB: number; diff: number }[]
+  stageComparisons: StageComparisonData[]
+  riskDiff: { levelA: RiskLevel; levelB: RiskLevel; countA: number; countB: number }
+}
 
 export interface Scheme {
   id: string
   name: string
   moldType: MoldType
   layers: Layer[]
+  stages: Stage[]
+  ambientTemp: number
   createdAt: number
   updatedAt: number
 }
@@ -39,8 +92,13 @@ export interface MaterialElement {
 export interface CuringEstimate {
   totalHours: number
   totalResinMl: number
+  totalThickness: number
   layerDetails: LayerCuringInfo[]
+  stageDetails: StageCuringInfo[]
   warnings: Warning[]
+  overallRisk: RiskLevel
+  nextSuggestion: string
+  currentStageRisk?: { stageId: string; stageName: string; level: RiskLevel; messages: string[] }
 }
 
 export interface LayerCuringInfo {

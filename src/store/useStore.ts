@@ -1,16 +1,22 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { MoldType, Layer, MaterialElement, Scheme, MaterialCategory } from '../types'
+import type { MoldType, Layer, MaterialElement, Scheme, MaterialCategory, Stage, StageType } from '../types'
+
+const DEFAULT_AMBIENT_TEMP = 25
 
 interface EditorState {
   currentMoldType: MoldType
   layers: Layer[]
+  stages: Stage[]
+  currentStageId: string | null
+  ambientTemp: number
   selectedElementId: string | null
   selectedLayerId: string | null
   schemes: Scheme[]
   currentSchemeId: string | null
 
   setMoldType: (type: MoldType) => void
+  setAmbientTemp: (temp: number) => void
   addLayer: (type: MaterialCategory, name: string) => string
   removeLayer: (id: string) => void
   updateLayer: (id: string, updates: Partial<Layer>) => void
@@ -20,6 +26,15 @@ interface EditorState {
   updateElement: (id: string, updates: Partial<MaterialElement>) => void
   selectElement: (id: string | null) => void
   selectLayer: (id: string | null) => void
+
+  addStage: (type: StageType, name?: string) => string
+  removeStage: (id: string) => void
+  updateStage: (id: string, updates: Partial<Stage>) => void
+  reorderStages: (fromIndex: number, toIndex: number) => void
+  selectStage: (id: string | null) => void
+  assignLayerToStage: (stageId: string, layerId: string) => void
+  removeLayerFromStage: (stageId: string, layerId: string) => void
+
   saveScheme: (name: string) => void
   loadScheme: (id: string) => void
   deleteScheme: (id: string) => void
@@ -28,18 +43,93 @@ interface EditorState {
 
 let layerCounter = 0
 let elementCounter = 0
+let stageCounter = 0
+
+function createDefaultStages(): Stage[] {
+  const temp = DEFAULT_AMBIENT_TEMP
+  return [
+    {
+      id: `stage-${Date.now()}-${++stageCounter}`,
+      name: '底胶层',
+      type: 'base',
+      order: 0,
+      layerIds: [],
+      glueMl: 0,
+      thickness: 1,
+      waitHours: 12,
+      ambientTemp: temp,
+      materialBatch: '',
+      notes: '',
+    },
+    {
+      id: `stage-${Date.now()}-${++stageCounter}`,
+      name: '材料定位层',
+      type: 'material',
+      order: 1,
+      layerIds: [],
+      glueMl: 0,
+      thickness: 1.5,
+      waitHours: 18,
+      ambientTemp: temp,
+      materialBatch: '',
+      notes: '',
+    },
+    {
+      id: `stage-${Date.now()}-${++stageCounter}`,
+      name: '封胶层',
+      type: 'sealant',
+      order: 2,
+      layerIds: [],
+      glueMl: 0,
+      thickness: 1.5,
+      waitHours: 24,
+      ambientTemp: temp,
+      materialBatch: '',
+      notes: '',
+    },
+    {
+      id: `stage-${Date.now()}-${++stageCounter}`,
+      name: '补胶修正层',
+      type: 'correction',
+      order: 3,
+      layerIds: [],
+      glueMl: 0,
+      thickness: 0.5,
+      waitHours: 12,
+      ambientTemp: temp,
+      materialBatch: '',
+      notes: '',
+    },
+  ]
+}
+
+function migrateScheme(scheme: unknown): Scheme {
+  const s = scheme as Partial<Scheme> & { [key: string]: unknown }
+  if (!s.stages || !Array.isArray(s.stages) || s.stages.length === 0) {
+    s.stages = createDefaultStages()
+  }
+  if (typeof s.ambientTemp !== 'number') {
+    s.ambientTemp = DEFAULT_AMBIENT_TEMP
+  }
+  return s as Scheme
+}
 
 export const useStore = create<EditorState>()(
   persist(
     (set, get) => ({
       currentMoldType: 'pendant',
       layers: [],
+      stages: createDefaultStages(),
+      currentStageId: null,
+      ambientTemp: DEFAULT_AMBIENT_TEMP,
       selectedElementId: null,
       selectedLayerId: null,
       schemes: [],
       currentSchemeId: null,
 
       setMoldType: (type) => set({ currentMoldType: type }),
+
+      setAmbientTemp: (temp) => set({ ambientTemp: temp }),
 
       addLayer: (type, name) => {
         layerCounter++
@@ -62,6 +152,10 @@ export const useStore = create<EditorState>()(
         set((state) => ({
           layers: state.layers.filter((l) => l.id !== id).map((l, i) => ({ ...l, order: i })),
           selectedLayerId: state.selectedLayerId === id ? null : state.selectedLayerId,
+          stages: state.stages.map((s) => ({
+            ...s,
+            layerIds: s.layerIds.filter((lid) => lid !== id),
+          })),
         })),
 
       updateLayer: (id, updates) =>
@@ -104,6 +198,82 @@ export const useStore = create<EditorState>()(
       selectElement: (id) => set({ selectedElementId: id }),
       selectLayer: (id) => set({ selectedLayerId: id }),
 
+      addStage: (type, name) => {
+        stageCounter++
+        const id = `stage-${Date.now()}-${stageCounter}`
+        const typeNames: Record<StageType, string> = {
+          base: '底胶层',
+          material: '材料定位层',
+          sealant: '封胶层',
+          correction: '补胶修正层',
+        }
+        const typeDefaults: Record<StageType, { thickness: number; waitHours: number }> = {
+          base: { thickness: 1, waitHours: 12 },
+          material: { thickness: 1.5, waitHours: 18 },
+          sealant: { thickness: 1.5, waitHours: 24 },
+          correction: { thickness: 0.5, waitHours: 12 },
+        }
+        const defaults = typeDefaults[type]
+        const newStage: Stage = {
+          id,
+          name: name || typeNames[type],
+          type,
+          order: get().stages.length,
+          layerIds: [],
+          glueMl: 0,
+          thickness: defaults.thickness,
+          waitHours: defaults.waitHours,
+          ambientTemp: get().ambientTemp,
+          materialBatch: '',
+          notes: '',
+        }
+        set((state) => ({ stages: [...state.stages, newStage], currentStageId: id }))
+        return id
+      },
+
+      removeStage: (id) =>
+        set((state) => {
+          if (state.stages.length <= 1) return state
+          const remaining = state.stages
+            .filter((s) => s.id !== id)
+            .map((s, i) => ({ ...s, order: i }))
+          return {
+            stages: remaining,
+            currentStageId: state.currentStageId === id ? remaining[0]?.id || null : state.currentStageId,
+          }
+        }),
+
+      updateStage: (id, updates) =>
+        set((state) => ({
+          stages: state.stages.map((s) => (s.id === id ? { ...s, ...updates } : s)),
+        })),
+
+      reorderStages: (fromIndex, toIndex) =>
+        set((state) => {
+          const newStages = [...state.stages]
+          const [removed] = newStages.splice(fromIndex, 1)
+          newStages.splice(toIndex, 0, removed)
+          return { stages: newStages.map((s, i) => ({ ...s, order: i })) }
+        }),
+
+      selectStage: (id) => set({ currentStageId: id }),
+
+      assignLayerToStage: (stageId, layerId) =>
+        set((state) => ({
+          stages: state.stages.map((s) => {
+            if (s.id !== stageId) return s
+            if (s.layerIds.includes(layerId)) return s
+            return { ...s, layerIds: [...s.layerIds, layerId] }
+          }),
+        })),
+
+      removeLayerFromStage: (stageId, layerId) =>
+        set((state) => ({
+          stages: state.stages.map((s) =>
+            s.id === stageId ? { ...s, layerIds: s.layerIds.filter((id) => id !== layerId) } : s
+          ),
+        })),
+
       saveScheme: (name) => {
         const state = get()
         const scheme: Scheme = {
@@ -111,6 +281,8 @@ export const useStore = create<EditorState>()(
           name,
           moldType: state.currentMoldType,
           layers: JSON.parse(JSON.stringify(state.layers)),
+          stages: JSON.parse(JSON.stringify(state.stages)),
+          ambientTemp: state.ambientTemp,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         }
@@ -121,16 +293,19 @@ export const useStore = create<EditorState>()(
       },
 
       loadScheme: (id) => {
-        const scheme = get().schemes.find((s) => s.id === id)
-        if (scheme) {
-          set({
-            currentMoldType: scheme.moldType,
-            layers: JSON.parse(JSON.stringify(scheme.layers)),
-            currentSchemeId: id,
-            selectedElementId: null,
-            selectedLayerId: null,
-          })
-        }
+        const raw = get().schemes.find((s) => s.id === id)
+        if (!raw) return
+        const scheme = migrateScheme(raw)
+        set({
+          currentMoldType: scheme.moldType,
+          layers: JSON.parse(JSON.stringify(scheme.layers)),
+          stages: JSON.parse(JSON.stringify(scheme.stages)),
+          ambientTemp: scheme.ambientTemp,
+          currentSchemeId: id,
+          currentStageId: scheme.stages[0]?.id || null,
+          selectedElementId: null,
+          selectedLayerId: null,
+        })
       },
 
       deleteScheme: (id) =>
@@ -140,12 +315,18 @@ export const useStore = create<EditorState>()(
         })),
 
       clearCanvas: () =>
-        set({ layers: [], selectedElementId: null, selectedLayerId: null }),
+        set({
+          layers: [],
+          stages: createDefaultStages(),
+          currentStageId: null,
+          selectedElementId: null,
+          selectedLayerId: null,
+        }),
     }),
     {
       name: 'resin-editor-storage',
       partialize: (state) => ({
-        schemes: state.schemes,
+        schemes: state.schemes.map(migrateScheme),
       }),
     }
   )

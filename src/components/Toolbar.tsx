@@ -2,7 +2,8 @@ import { useState, useRef } from 'react'
 import { useStore } from '@/store/useStore'
 import { MOLD_SHAPE_MAP } from '@/utils/moldShapes'
 import { MATERIAL_TEMPLATES } from '@/utils/materialTemplates'
-import { Save, FolderOpen, Download, Printer, Trash2, X } from 'lucide-react'
+import { Save, FolderOpen, Download, Printer, Trash2, X, GitCompare } from 'lucide-react'
+import SchemeComparison from './SchemeComparison'
 import html2canvas from 'html2canvas'
 
 export default function Toolbar() {
@@ -19,6 +20,7 @@ export default function Toolbar() {
   const [schemeName, setSchemeName] = useState('')
   const [showSchemeList, setShowSchemeList] = useState(false)
   const [showExportMenu, setShowExportMenu] = useState(false)
+  const [showComparison, setShowComparison] = useState(false)
 
   const handleSave = () => {
     if (schemeName.trim()) {
@@ -280,6 +282,15 @@ export default function Toolbar() {
         </div>
 
         <button
+          onClick={() => setShowComparison(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+          style={{ background: 'rgba(135,206,235,0.15)', color: '#87CEEB', border: '1px solid rgba(135,206,235,0.25)' }}
+        >
+          <GitCompare size={14} />
+          方案对比
+        </button>
+
+        <button
           onClick={clearCanvas}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
           style={{ background: 'rgba(239,68,68,0.15)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}
@@ -287,6 +298,8 @@ export default function Toolbar() {
           清空画布
         </button>
       </div>
+
+      <SchemeComparison open={showComparison} onClose={() => setShowComparison(false)} />
 
       {showSaveDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)' }}>

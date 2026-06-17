@@ -20,13 +20,37 @@ export default function MoldCanvas() {
 
   const currentMoldType = useStore((s) => s.currentMoldType)
   const layers = useStore((s) => s.layers)
+  const stages = useStore((s) => s.stages)
+  const currentStageId = useStore((s) => s.currentStageId)
   const selectedElementId = useStore((s) => s.selectedElementId)
   const selectElement = useStore((s) => s.selectElement)
   const updateElement = useStore((s) => s.updateElement)
   const removeElement = useStore((s) => s.removeElement)
 
   const mold = MOLD_SHAPE_MAP[currentMoldType]
-  const sorted = [...layers].sort((a, b) => a.order - b.order)
+
+  const visibleLayerIds = (() => {
+    if (!currentStageId) return layers.map((l) => l.id)
+    const sortedStages = [...stages].sort((a, b) => a.order - b.order)
+    const currentIdx = sortedStages.findIndex((s) => s.id === currentStageId)
+    if (currentIdx === -1) return layers.map((l) => l.id)
+    const ids = new Set<string>()
+    for (let i = 0; i <= currentIdx; i++) {
+      sortedStages[i].layerIds.forEach((id) => ids.add(id))
+    }
+    const unassigned = layers.filter((l) => !stages.some((s) => s.layerIds.includes(l.id)))
+    unassigned.forEach((l) => ids.add(l.id))
+    return Array.from(ids)
+  })()
+
+  const activeLayerIds = (() => {
+    if (!currentStageId) return new Set<string>()
+    const stage = stages.find((s) => s.id === currentStageId)
+    return new Set(stage?.layerIds || [])
+  })()
+
+  const filteredLayers = layers.filter((l) => visibleLayerIds.includes(l.id))
+  const sorted = [...filteredLayers].sort((a, b) => a.order - b.order)
 
   const getScale = useCallback(() => {
     if (canvasSize.w === 0 || canvasSize.h === 0) return { s: 100, cx: 0, cy: 0 }
@@ -81,7 +105,13 @@ export default function MoldCanvas() {
 
     for (const layer of sorted) {
       ctx.save()
-      ctx.globalAlpha = layer.opacity
+      const isActiveStage = activeLayerIds.size > 0 && activeLayerIds.has(layer.id)
+      const isPastStage = activeLayerIds.size > 0 && !isActiveStage && visibleLayerIds.includes(layer.id)
+      ctx.globalAlpha = layer.opacity * (isPastStage ? 0.6 : 1)
+      if (isActiveStage) {
+        ctx.shadowColor = 'rgba(201, 169, 110, 0.4)'
+        ctx.shadowBlur = 8
+      }
       for (const el of layer.elements) {
         const p = toCanvas(el.x, el.y, el.width * el.scale, el.height * el.scale)
         const r = Math.min(CORNER_RADIUS, p.w / 4, p.h / 4)
@@ -171,7 +201,7 @@ export default function MoldCanvas() {
       }
       ctx.restore()
     }
-  }, [canvasSize, sorted, selectedElementId, mold, getScale, toCanvas])
+  }, [canvasSize, sorted, selectedElementId, mold, getScale, toCanvas, activeLayerIds, visibleLayerIds])
 
   function adjustBrightness(hex: string, percent: number): string {
     const num = parseInt(hex.replace('#', ''), 16)
@@ -250,7 +280,7 @@ export default function MoldCanvas() {
           ]
           for (const [name, cx, cy] of corners) {
             if (Math.abs(lx - cx) <= hs && Math.abs(ly - cy) <= hs) {
-              return { el, hit: name as any }
+              return { el, hit: name as 'resize-tl' | 'resize-tr' | 'resize-bl' | 'resize-br' }
             }
           }
           const rotX = 0
@@ -325,7 +355,7 @@ export default function MoldCanvas() {
         updateElement(id, { rotation: newRot })
       }
     }
-  }, [getMousePos, fromCanvas, updateElement, getScale, sorted])
+  }, [getMousePos, fromCanvas, updateElement, getScale, sorted, toCanvas])
 
   const handleMouseUp = useCallback(() => { dragRef.current = null }, [])
 
