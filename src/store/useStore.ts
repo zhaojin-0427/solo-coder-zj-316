@@ -51,6 +51,7 @@ export const useStore = create<EditorState>()(
           order: get().layers.length,
           opacity: 1,
           thickness: 1,
+          locked: false,
           elements: [],
         }
         set((state) => ({ layers: [...state.layers, newLayer] }))

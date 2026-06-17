@@ -103,8 +103,8 @@ function detectGravityWarnings(
 
   for (const el of allElements) {
     const mass = (el.width * el.scale) * (el.height * el.scale)
-    const cx = el.x + (el.width * el.scale) / 2
-    const cy = el.y + (el.height * el.scale) / 2
+    const cx = el.x
+    const cy = el.y
     totalMass += mass
     weightedX += cx * mass
     weightedY += cy * mass
@@ -112,18 +112,34 @@ function detectGravityWarnings(
 
   const centerX = weightedX / totalMass
   const centerY = weightedY / totalMass
+  const distance = Math.sqrt(centerX ** 2 + centerY ** 2)
 
-  const moldCx = moldWidth / 2
-  const moldCy = moldHeight / 2
-  const distance = Math.sqrt((centerX - moldCx) ** 2 + (centerY - moldCy) ** 2)
-  const threshold = Math.min(moldWidth, moldHeight) * 0.3
-
-  if (distance > threshold) {
-    warnings.push({
-      type: 'gravity',
-      level: 'danger',
-      message: '元素重心偏离模具中心过远，可能导致材料分布不均',
-    })
+  if (moldType === 'ring') {
+    const outerR = Math.min(moldWidth, moldHeight) * 0.4
+    const innerR = Math.min(moldWidth, moldHeight) * 0.25
+    const idealR = (outerR + innerR) / 2
+    const deviation = Math.abs(distance - idealR)
+    const allowDeviation = (outerR - innerR) * 0.6
+    if (deviation > allowDeviation) {
+      warnings.push({
+        type: 'gravity',
+        level: 'warning',
+        message: distance < innerR
+          ? '元素过于靠近戒指中心，可能位于空心区域'
+          : '元素过于偏离戒指环带，分布不均匀',
+      })
+    }
+  } else {
+    const halfW = moldWidth / 2
+    const halfH = moldHeight / 2
+    const threshold = Math.min(halfW, halfH) * 0.35
+    if (distance > threshold) {
+      warnings.push({
+        type: 'gravity',
+        level: 'warning',
+        message: '元素重心偏离模具中心过远，可能导致材料分布不均',
+      })
+    }
   }
 
   return warnings

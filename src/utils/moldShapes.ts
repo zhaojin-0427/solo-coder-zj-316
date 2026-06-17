@@ -36,7 +36,7 @@ const hairclipShape: MoldShape = {
 
 const ringShape: MoldShape = {
   type: 'ring',
-  label: '戒指',
+  label: '戒指托',
   path: (cx, cy, size) => {
     const outerR = size * 0.4
     const innerR = size * 0.25

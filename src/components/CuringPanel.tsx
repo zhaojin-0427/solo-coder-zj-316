@@ -12,7 +12,7 @@ export default function CuringPanel() {
 
   const moldShape = MOLD_SHAPE_MAP[currentMoldType]
   const estimate = useMemo(
-    () => estimateCuring(layers, currentMoldType, moldShape.width * 3, moldShape.height * 3, moldShape.areaMm2),
+    () => estimateCuring(layers, currentMoldType, moldShape.width, moldShape.height, moldShape.areaMm2),
     [layers, currentMoldType, moldShape]
   )
 

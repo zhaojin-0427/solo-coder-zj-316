@@ -17,6 +17,7 @@ export interface Layer {
   order: number
   opacity: number
   thickness: number
+  locked: boolean
   elements: MaterialElement[]
 }
 

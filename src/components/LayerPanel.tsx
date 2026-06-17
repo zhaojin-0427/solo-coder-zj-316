@@ -22,7 +22,6 @@ export default function LayerPanel() {
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
-  const [lockedIds, setLockedIds] = useState<Set<string>>(new Set())
 
   const handleAddLayer = (type: MaterialCategory) => {
     addLayer(type, '')
@@ -80,15 +79,24 @@ export default function LayerPanel() {
           return (
             <div
               key={layer.id}
-              className="layer-item rounded p-2 cursor-pointer"
+              className="layer-item rounded p-2 cursor-pointer relative overflow-hidden"
               style={{
                 background: isActive ? 'rgba(201,169,110,0.12)' : 'rgba(0,0,0,0.15)',
                 borderLeft: isActive ? '3px solid #C9A96E' : '3px solid transparent',
+                opacity: layer.locked ? 0.6 : 1,
               }}
               onClick={() => selectLayer(layer.id)}
             >
+              {layer.locked && (
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(201,169,110,0.06) 4px, rgba(201,169,110,0.06) 8px)',
+                  }}
+                />
+              )}
               <div className="flex items-center gap-2 mb-1">
-                <GripVertical size={14} style={{ color: '#8B7355', flexShrink: 0 }} />
+                <GripVertical size={14} style={{ color: layer.locked ? '#5A4A3A' : '#8B7355', flexShrink: 0, cursor: layer.locked ? 'not-allowed' : 'grab' }} />
                 {isEditing ? (
                   <input
                     value={editName}
@@ -99,26 +107,32 @@ export default function LayerPanel() {
                     style={{ background: 'rgba(0,0,0,0.3)', color: '#FFF8F0', border: '1px solid #C9A96E' }}
                     autoFocus
                     onClick={(e) => e.stopPropagation()}
+                    disabled={layer.locked}
                   />
                 ) : (
                   <span
                     className="flex-1 text-xs truncate"
-                    style={{ color: '#FFF8F0' }}
+                    style={{ color: layer.locked ? '#8B7355' : '#FFF8F0' }}
                     onDoubleClick={(e) => {
                       e.stopPropagation()
-                      handleStartEdit(layer.id, layer.name)
+                      if (!layer.locked) handleStartEdit(layer.id, layer.name)
                     }}
                   >
                     {layer.name}
+                    {layer.locked && <span style={{ marginLeft: 4, fontSize: 10 }}>已锁定</span>}
                   </span>
                 )}
-                <button onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { opacity: layer.opacity > 0 ? 0 : 1 }) }} style={{ color: '#8B7355' }}>
+                <button onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { opacity: layer.opacity > 0 ? 0 : 1 }) }} style={{ color: layer.opacity > 0 ? '#8B7355' : '#5A4A3A' }}>
                   {layer.opacity > 0 ? <Eye size={14} /> : <EyeOff size={14} />}
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); setLockedIds((prev) => { const next = new Set(prev); next.has(layer.id) ? next.delete(layer.id) : next.add(layer.id); return next }) }} style={{ color: '#8B7355' }}>
-                  {lockedIds.has(layer.id) ? <Lock size={14} /> : <Unlock size={14} />}
+                <button onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { locked: !layer.locked }) }} style={{ color: layer.locked ? '#C9A96E' : '#8B7355' }} title={layer.locked ? '解锁图层' : '锁定图层'}>
+                  {layer.locked ? <Lock size={14} /> : <Unlock size={14} />}
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); removeLayer(layer.id) }} style={{ color: '#8B7355' }}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); !layer.locked && removeLayer(layer.id) }}
+                  style={{ color: layer.locked ? '#5A4A3A' : '#8B7355', cursor: layer.locked ? 'not-allowed' : 'pointer' }}
+                  title={layer.locked ? '图层已锁定，无法删除' : '删除图层'}
+                >
                   <Trash2 size={14} />
                 </button>
               </div>
@@ -131,10 +145,11 @@ export default function LayerPanel() {
                   value={layer.opacity}
                   onChange={(e) => updateLayer(layer.id, { opacity: parseFloat(e.target.value) })}
                   className="flex-1"
-                  style={{ accentColor: '#C9A96E' }}
+                  style={{ accentColor: '#C9A96E', opacity: layer.locked ? 0.5 : 1, cursor: layer.locked ? 'not-allowed' : 'pointer' }}
                   onClick={(e) => e.stopPropagation()}
+                  disabled={layer.locked}
                 />
-                <span className="text-xs w-6 text-right" style={{ color: '#FFF8F0' }}>{layer.opacity.toFixed(1)}</span>
+                <span className="text-xs w-6 text-right" style={{ color: layer.locked ? '#8B7355' : '#FFF8F0' }}>{layer.opacity.toFixed(1)}</span>
               </div>
 
               <div className="flex items-center gap-2 pl-5">
@@ -145,22 +160,23 @@ export default function LayerPanel() {
                   value={layer.thickness}
                   onChange={(e) => updateLayer(layer.id, { thickness: parseFloat(e.target.value) || 0.5 })}
                   className="w-14 text-xs rounded px-1 py-0.5"
-                  style={{ background: 'rgba(0,0,0,0.3)', color: '#FFF8F0', border: '1px solid rgba(201,169,110,0.2)' }}
+                  style={{ background: 'rgba(0,0,0,0.3)', color: layer.locked ? '#8B7355' : '#FFF8F0', border: '1px solid rgba(201,169,110,0.2)' }}
                   onClick={(e) => e.stopPropagation()}
+                  disabled={layer.locked}
                 />
                 <span className="text-xs" style={{ color: '#8B7355' }}>mm</span>
                 <div className="flex-1" />
                 <button
-                  onClick={(e) => { e.stopPropagation(); index > 0 && reorderLayers(index, index - 1) }}
-                  disabled={index === 0}
-                  style={{ color: index === 0 ? '#5A4A3A' : '#8B7355' }}
+                  onClick={(e) => { e.stopPropagation(); !layer.locked && index > 0 && reorderLayers(index, index - 1) }}
+                  disabled={index === 0 || layer.locked}
+                  style={{ color: (index === 0 || layer.locked) ? '#5A4A3A' : '#8B7355', cursor: (index === 0 || layer.locked) ? 'not-allowed' : 'pointer' }}
                 >
                   <ChevronUp size={14} />
                 </button>
                 <button
-                  onClick={(e) => { e.stopPropagation(); index < layers.length - 1 && reorderLayers(index, index + 1) }}
-                  disabled={index === layers.length - 1}
-                  style={{ color: index === layers.length - 1 ? '#5A4A3A' : '#8B7355' }}
+                  onClick={(e) => { e.stopPropagation(); !layer.locked && index < layers.length - 1 && reorderLayers(index, index + 1) }}
+                  disabled={index === layers.length - 1 || layer.locked}
+                  style={{ color: (index === layers.length - 1 || layer.locked) ? '#5A4A3A' : '#8B7355', cursor: (index === layers.length - 1 || layer.locked) ? 'not-allowed' : 'pointer' }}
                 >
                   <ChevronDown size={14} />
                 </button>

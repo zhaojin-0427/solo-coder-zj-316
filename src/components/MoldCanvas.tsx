@@ -214,9 +214,21 @@ export default function MoldCanvas() {
 
   useEffect(() => { draw() }, [draw])
 
+  useEffect(() => {
+    if (!selectedElementId) return
+    const el = sorted.flatMap((l) => l.elements).find((e) => e.id === selectedElementId)
+    if (!el) return
+    const layer = layers.find((l) => l.id === el.layerId)
+    if (layer?.locked) {
+      selectElement(null)
+    }
+  }, [layers, selectedElementId, selectElement, sorted])
+
   const hitTest = useCallback((px: number, py: number): { el: MaterialElement; hit: 'body' | 'resize-tl' | 'resize-tr' | 'resize-bl' | 'resize-br' | 'rotate' } | null => {
     for (let i = sorted.length - 1; i >= 0; i--) {
-      for (const el of sorted[i].elements) {
+      const layer = sorted[i]
+      if (layer.locked) continue
+      for (const el of layer.elements) {
         const p = toCanvas(el.x, el.y, el.width * el.scale, el.height * el.scale)
         const cos = Math.cos((-el.rotation * Math.PI) / 180)
         const sin = Math.sin((-el.rotation * Math.PI) / 180)

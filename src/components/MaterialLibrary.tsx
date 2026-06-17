@@ -25,8 +25,8 @@ export default function MaterialLibrary() {
   const handleAddMaterial = (template: (typeof MATERIAL_TEMPLATES)[MaterialCategory][number]) => {
     let layerId = selectedLayerId
     const selectedLayer = layers.find((l) => l.id === layerId)
-    if (!layerId || !selectedLayer || selectedLayer.type !== template.category) {
-      const matchingLayer = layers.find((l) => l.type === template.category)
+    if (!layerId || !selectedLayer || selectedLayer.type !== template.category || selectedLayer.locked) {
+      const matchingLayer = layers.find((l) => l.type === template.category && !l.locked)
       if (matchingLayer) {
         layerId = matchingLayer.id
         selectLayer(layerId)
