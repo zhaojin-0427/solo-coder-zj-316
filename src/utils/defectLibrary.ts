@@ -250,6 +250,8 @@ export const MATERIAL_CATEGORY_LABELS: Record<MaterialCategory, string> = {
   glitter: '亮片',
   goldFoil: '金箔',
   colorPowder: '色粉',
+  abGlue: 'AB胶',
+  moldSupply: '模具耗材',
 }
 
 export function getDefectLabel(type: DefectType): string {

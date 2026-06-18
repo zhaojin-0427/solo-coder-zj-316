@@ -1,7 +1,9 @@
 export type MoldType = 'pendant' | 'hairclip' | 'ring' | 'coaster'
-export type MaterialCategory = 'driedFlower' | 'glitter' | 'goldFoil' | 'colorPowder'
+export type MaterialCategory = 'driedFlower' | 'glitter' | 'goldFoil' | 'colorPowder' | 'abGlue' | 'moldSupply'
 export type StageType = 'base' | 'material' | 'sealant' | 'correction'
 export type RiskLevel = 'low' | 'medium' | 'high'
+export type InventoryCategory = 'driedFlower' | 'glitter' | 'goldFoil' | 'colorPowder' | 'abGlue' | 'moldSupply'
+export type QuotationStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired'
 
 export type DefectType =
   | 'bubble'
@@ -225,4 +227,88 @@ export interface StepCardItem {
   elementCount: number
   elementNames: string[]
   tips: string[]
+}
+
+export interface InventoryMaterial {
+  id: string
+  name: string
+  category: InventoryCategory
+  spec: string
+  unit: string
+  purchasePrice: number
+  currentStock: number
+  minWarning: number
+  supplier: string
+  batchNo: string
+  expiryDate: string
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface MaterialConsumption {
+  materialId: string
+  materialName: string
+  category: InventoryCategory
+  consumedQty: number
+  unit: string
+  unitPrice: number
+  subtotal: number
+  remainingStock: number
+  wasteCost: number
+}
+
+export interface CostWarning {
+  type: 'lowStock' | 'nearExpiry' | 'batchMismatch' | 'highCost'
+  level: 'info' | 'warning' | 'danger'
+  message: string
+  materialId?: string
+  materialName?: string
+}
+
+export interface CostEstimate {
+  consumptions: MaterialConsumption[]
+  totalMaterialCost: number
+  totalWasteCost: number
+  totalResinMl: number
+  resinCost: number
+  laborCost: number
+  riskMarkup: number
+  totalCost: number
+  suggestedPrice: number
+  warnings: CostWarning[]
+}
+
+export interface QuotationItem {
+  materialId: string
+  materialName: string
+  category: InventoryCategory
+  spec: string
+  unit: string
+  quantity: number
+  unitPrice: number
+  subtotal: number
+}
+
+export interface Quotation {
+  id: string
+  schemeId: string
+  schemeName: string
+  moldType: MoldType
+  customerName: string
+  status: QuotationStatus
+  items: QuotationItem[]
+  totalResinMl: number
+  resinCost: number
+  materialCost: number
+  wasteCost: number
+  laborHours: number
+  laborCost: number
+  riskMarkup: number
+  profitMargin: number
+  finalPrice: number
+  customerNotes: string
+  internalNotes: string
+  createdAt: number
+  updatedAt: number
 }

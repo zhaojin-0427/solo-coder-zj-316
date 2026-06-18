@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '@/store/useStore'
 import { MOLD_SHAPE_MAP } from '@/utils/moldShapes'
-import { Save, FolderOpen, Download, Printer, Trash2, X, GitCompare, BookOpen, ClipboardList, Edit, Plus } from 'lucide-react'
+import { Save, FolderOpen, Download, Printer, Trash2, X, GitCompare, BookOpen, ClipboardList, Edit, Plus, Package, FileText } from 'lucide-react'
 import SchemeComparison from './SchemeComparison'
 import ReviewEditor from './ReviewEditor'
 import KnowledgeDrawer from './KnowledgeDrawer'
+import InventoryPanel from './InventoryPanel'
+import QuotationPanel from './QuotationPanel'
 
 export default function Toolbar() {
   const schemes = useStore((s) => s.schemes)
@@ -26,6 +28,7 @@ export default function Toolbar() {
   const setShowKnowledgeDrawer = useStore((s) => s.setShowKnowledgeDrawer)
   const viewingReviewId = useStore((s) => s.viewingReviewId)
   const setViewingReviewId = useStore((s) => s.setViewingReviewId)
+  const quotationCount = useStore((s) => s.quotations.length)
 
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [schemeName, setSchemeName] = useState('')
@@ -35,6 +38,8 @@ export default function Toolbar() {
   const [showReviewEditor, setShowReviewEditor] = useState(false)
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null)
   const [reviewSchemeId, setReviewSchemeId] = useState<string>('')
+  const [showInventory, setShowInventory] = useState(false)
+  const [showQuotation, setShowQuotation] = useState(false)
 
   const handleSave = () => {
     if (schemeName.trim()) {
@@ -393,6 +398,29 @@ export default function Toolbar() {
           )}
         </button>
 
+        <button
+          onClick={() => setShowInventory(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+          style={{ background: 'rgba(201,169,110,0.15)', color: '#D4A574', border: '1px solid rgba(201,169,110,0.25)' }}
+        >
+          <Package size={14} />
+          库存成本
+        </button>
+
+        <button
+          onClick={() => setShowQuotation(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+          style={{ background: 'rgba(255,215,0,0.12)', color: '#FFD700', border: '1px solid rgba(255,215,0,0.2)' }}
+        >
+          <FileText size={14} />
+          报价单
+          {quotationCount > 0 && (
+            <span className="rounded-full px-1.5 text-xs" style={{ background: 'rgba(255,215,0,0.2)', color: '#FFD700' }}>
+              {quotationCount}
+            </span>
+          )}
+        </button>
+
         {currentSchemeId && (
           <button
             onClick={() => handleOpenReview(currentSchemeId)}
@@ -442,6 +470,18 @@ export default function Toolbar() {
           ambientTemp={schemes.find((s) => s.id === reviewSchemeId)?.ambientTemp || ambientTemp}
         />
       )}
+
+      <InventoryPanel
+        open={showInventory}
+        onClose={() => setShowInventory(false)}
+        onOpenQuotation={() => { setShowInventory(false); setShowQuotation(true) }}
+      />
+
+      <QuotationPanel
+        open={showQuotation}
+        onClose={() => setShowQuotation(false)}
+        onOpenInventory={() => { setShowQuotation(false); setShowInventory(true) }}
+      />
 
       {showSaveDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)' }}>

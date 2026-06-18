@@ -26,6 +26,8 @@ const CATEGORY_TIPS: Record<MaterialCategory, string[]> = {
   glitter: ['亮片易产生气泡，缓慢倒入', '可分层撒布增加层次感', '注意避免金属亮片氧化'],
   goldFoil: ['金箔极薄，用镊子轻取', '避免褶皱影响美观', '可撕成碎片增加自然感'],
   colorPowder: ['色粉需与少量胶预混合', '避免色粉结块', '少量多次调色更均匀'],
+  abGlue: ['严格按比例混合AB胶', '缓慢搅拌减少气泡', '注意操作时间'],
+  moldSupply: ['模具使用前需清洁', '注意模具使用寿命', '脱模时避免损坏'],
 }
 
 const CATEGORY_LABELS: Record<MaterialCategory, string> = {
@@ -33,6 +35,8 @@ const CATEGORY_LABELS: Record<MaterialCategory, string> = {
   glitter: '亮片',
   goldFoil: '金箔',
   colorPowder: '色粉',
+  abGlue: 'AB胶',
+  moldSupply: '模具耗材',
 }
 
 const STAGE_LABELS: Record<StageType, string> = {
@@ -445,6 +449,8 @@ export function compareSchemes(schemeA: Scheme, schemeB: Scheme): SchemeComparis
       glitter: 0,
       goldFoil: 0,
       colorPowder: 0,
+      abGlue: 0,
+      moldSupply: 0,
     }
     for (const l of layers) {
       counts[l.type] += l.elements.length

@@ -37,4 +37,6 @@ export const MATERIAL_TEMPLATES: Record<MaterialCategory, MaterialTemplate[]> = 
   glitter: glitterTemplates,
   goldFoil: goldFoilTemplates,
   colorPowder: colorPowderTemplates,
+  abGlue: [],
+  moldSupply: [],
 }

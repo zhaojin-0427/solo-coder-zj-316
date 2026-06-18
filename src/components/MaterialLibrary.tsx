@@ -16,6 +16,8 @@ const CATEGORY_NAMES: Record<MaterialCategory, string> = {
   glitter: '亮片',
   goldFoil: '金箔',
   colorPowder: '色粉',
+  abGlue: 'AB胶',
+  moldSupply: '模具耗材',
 }
 
 export default function MaterialLibrary() {

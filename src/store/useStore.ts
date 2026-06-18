@@ -13,6 +13,10 @@ import type {
   DefectItem,
   DefoamingMethod,
   SuccessRate,
+  InventoryMaterial,
+  InventoryCategory,
+  Quotation,
+  QuotationStatus,
 } from '../types'
 
 const DEFAULT_AMBIENT_TEMP = 25
@@ -29,6 +33,8 @@ interface EditorState {
   currentSchemeId: string | null
   reviewRecords: ReviewRecord[]
   knowledgeCards: KnowledgeCard[]
+  inventoryMaterials: InventoryMaterial[]
+  quotations: Quotation[]
 
   setMoldType: (type: MoldType) => void
   setAmbientTemp: (temp: number) => void
@@ -63,6 +69,14 @@ interface EditorState {
   addKnowledgeCard: (card: Omit<KnowledgeCard, 'id' | 'createdAt'>) => string
   deleteKnowledgeCard: (id: string) => void
   generateKnowledgeCard: (reviewId: string) => string | null
+
+  addInventoryMaterial: (material: Omit<InventoryMaterial, 'id' | 'createdAt' | 'updatedAt'>) => string
+  updateInventoryMaterial: (id: string, updates: Partial<InventoryMaterial>) => void
+  deleteInventoryMaterial: (id: string) => void
+
+  addQuotation: (quotation: Quotation) => string
+  updateQuotation: (id: string, updates: Partial<Quotation>) => void
+  deleteQuotation: (id: string) => void
 
   showKnowledgeDrawer: boolean
   setShowKnowledgeDrawer: (show: boolean) => void
@@ -245,6 +259,50 @@ function migrateKnowledgeCard(card: unknown): KnowledgeCard {
 
 let reviewCounter = 0
 let knowledgeCounter = 0
+let inventoryCounter = 0
+let quotationCounter = 0
+
+function migrateInventoryMaterial(material: unknown): InventoryMaterial {
+  const m = material as Partial<InventoryMaterial> & { [key: string]: unknown }
+  if (!m.name) m.name = ''
+  if (!m.category) m.category = 'abGlue' as InventoryCategory
+  if (!m.spec) m.spec = ''
+  if (!m.unit) m.unit = 'g'
+  if (typeof m.purchasePrice !== 'number' || m.purchasePrice < 0) m.purchasePrice = 0
+  if (typeof m.currentStock !== 'number' || m.currentStock < 0) m.currentStock = 0
+  if (typeof m.minWarning !== 'number' || m.minWarning < 0) m.minWarning = 0
+  if (!m.supplier) m.supplier = ''
+  if (!m.batchNo) m.batchNo = ''
+  if (!m.expiryDate) m.expiryDate = ''
+  if (!m.notes) m.notes = ''
+  if (typeof m.createdAt !== 'number') m.createdAt = Date.now()
+  if (typeof m.updatedAt !== 'number') m.updatedAt = Date.now()
+  return m as InventoryMaterial
+}
+
+function migrateQuotation(quotation: unknown): Quotation {
+  const q = quotation as Partial<Quotation> & { [key: string]: unknown }
+  if (!q.schemeId) q.schemeId = ''
+  if (!q.schemeName) q.schemeName = ''
+  if (!q.moldType) q.moldType = 'pendant' as MoldType
+  if (!q.customerName) q.customerName = ''
+  if (!q.status) q.status = 'draft' as QuotationStatus
+  if (!q.items || !Array.isArray(q.items)) q.items = []
+  if (typeof q.totalResinMl !== 'number') q.totalResinMl = 0
+  if (typeof q.resinCost !== 'number') q.resinCost = 0
+  if (typeof q.materialCost !== 'number') q.materialCost = 0
+  if (typeof q.wasteCost !== 'number') q.wasteCost = 0
+  if (typeof q.laborHours !== 'number') q.laborHours = 0
+  if (typeof q.laborCost !== 'number') q.laborCost = 0
+  if (typeof q.riskMarkup !== 'number') q.riskMarkup = 0
+  if (typeof q.profitMargin !== 'number') q.profitMargin = 0.3
+  if (typeof q.finalPrice !== 'number') q.finalPrice = 0
+  if (!q.customerNotes) q.customerNotes = ''
+  if (!q.internalNotes) q.internalNotes = ''
+  if (typeof q.createdAt !== 'number') q.createdAt = Date.now()
+  if (typeof q.updatedAt !== 'number') q.updatedAt = Date.now()
+  return q as Quotation
+}
 
 export const useStore = create<EditorState>()(
   persist(
@@ -262,6 +320,8 @@ export const useStore = create<EditorState>()(
         currentSchemeId: null,
         reviewRecords: [],
         knowledgeCards: [],
+        inventoryMaterials: [],
+        quotations: [],
         showKnowledgeDrawer: false,
         viewingReviewId: null,
 
@@ -278,7 +338,7 @@ export const useStore = create<EditorState>()(
         const id = `layer-${Date.now()}-${layerCounter}`
         const newLayer: Layer = {
           id,
-          name: name || `${type === 'driedFlower' ? '干花' : type === 'glitter' ? '亮片' : type === 'goldFoil' ? '金箔' : '色粉'}层 ${layerCounter}`,
+          name: name || `${type === 'driedFlower' ? '干花' : type === 'glitter' ? '亮片' : type === 'goldFoil' ? '金箔' : type === 'colorPowder' ? '色粉' : type === 'abGlue' ? 'AB胶' : '模具耗材'}层 ${layerCounter}`,
           type,
           order: get().layers.length,
           opacity: 1,
@@ -549,6 +609,55 @@ export const useStore = create<EditorState>()(
 
       setShowKnowledgeDrawer: (show) => set({ showKnowledgeDrawer: show }),
 
+      addInventoryMaterial: (material) => {
+        inventoryCounter++
+        const id = `inv-${Date.now()}-${inventoryCounter}`
+        const now = Date.now()
+        const newMaterial: InventoryMaterial = {
+          ...material,
+          id,
+          createdAt: now,
+          updatedAt: now,
+        }
+        set((state) => ({ inventoryMaterials: [...state.inventoryMaterials, newMaterial] }))
+        return id
+      },
+
+      updateInventoryMaterial: (id, updates) =>
+        set((state) => ({
+          inventoryMaterials: state.inventoryMaterials.map((m) =>
+            m.id === id ? { ...m, ...updates, updatedAt: Date.now() } : m
+          ),
+        })),
+
+      deleteInventoryMaterial: (id) =>
+        set((state) => ({
+          inventoryMaterials: state.inventoryMaterials.filter((m) => m.id !== id),
+        })),
+
+      addQuotation: (quotation) => {
+        quotationCounter++
+        const id = quotation.id || `quotation-${Date.now()}-${quotationCounter}`
+        const newQuotation: Quotation = {
+          ...quotation,
+          id,
+        }
+        set((state) => ({ quotations: [...state.quotations, newQuotation] }))
+        return id
+      },
+
+      updateQuotation: (id, updates) =>
+        set((state) => ({
+          quotations: state.quotations.map((q) =>
+            q.id === id ? { ...q, ...updates, updatedAt: Date.now() } : q
+          ),
+        })),
+
+      deleteQuotation: (id) =>
+        set((state) => ({
+          quotations: state.quotations.filter((q) => q.id !== id),
+        })),
+
       setViewingReviewId: (id) => {
         set({ viewingReviewId: id })
         if (id) {
@@ -563,6 +672,8 @@ export const useStore = create<EditorState>()(
         schemes: state.schemes.map(migrateScheme),
         reviewRecords: state.reviewRecords.map(migrateReviewRecord),
         knowledgeCards: state.knowledgeCards.map(migrateKnowledgeCard),
+        inventoryMaterials: state.inventoryMaterials.map(migrateInventoryMaterial),
+        quotations: state.quotations.map(migrateQuotation),
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
@@ -571,6 +682,12 @@ export const useStore = create<EditorState>()(
           }
           if (!state.knowledgeCards) {
             state.knowledgeCards = []
+          }
+          if (!state.inventoryMaterials) {
+            state.inventoryMaterials = []
+          }
+          if (!state.quotations) {
+            state.quotations = []
           }
           if (!state.schemes) {
             state.schemes = []
@@ -582,6 +699,12 @@ export const useStore = create<EditorState>()(
           }
           if (state.knowledgeCards.length > 0) {
             state.knowledgeCards = state.knowledgeCards.map(migrateKnowledgeCard)
+          }
+          if (state.inventoryMaterials.length > 0) {
+            state.inventoryMaterials = state.inventoryMaterials.map(migrateInventoryMaterial)
+          }
+          if (state.quotations.length > 0) {
+            state.quotations = state.quotations.map(migrateQuotation)
           }
         }
       },
