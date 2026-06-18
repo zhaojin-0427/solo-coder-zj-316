@@ -4,6 +4,79 @@ export type StageType = 'base' | 'material' | 'sealant' | 'correction'
 export type RiskLevel = 'low' | 'medium' | 'high'
 export type InventoryCategory = 'driedFlower' | 'glitter' | 'goldFoil' | 'colorPowder' | 'abGlue' | 'moldSupply'
 export type QuotationStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired'
+export type OrderSource = 'online' | 'offline' | 'referral' | 'exhibition' | 'other'
+export type LogisticsMethod = 'express' | 'sf' | 'ems' | 'pickup' | 'other'
+export type OrderStatus = 'pending_material' | 'pending_pour' | 'curing' | 'pending_demold' | 'pending_packaging' | 'delivered'
+export type OrderAlertType = 'delivery_urgent' | 'insufficient_stock' | 'curing_overdue' | 'quotation_unconfirmed' | 'balance_unpaid'
+
+export interface OrderMaterialItem {
+  materialId: string
+  materialName: string
+  category: InventoryCategory
+  requiredQty: number
+  unit: string
+  inStock: number
+  shortageQty: number
+  unitPrice: number
+  subtotal: number
+}
+
+export interface ProductionStage {
+  stageId: string
+  stageName: string
+  stageType: StageType
+  plannedStartAt: number
+  plannedEndAt: number
+  actualStartAt: number | null
+  actualEndAt: number | null
+  durationHours: number
+  status: 'pending' | 'in_progress' | 'completed'
+}
+
+export interface OrderAlert {
+  type: OrderAlertType
+  level: 'info' | 'warning' | 'danger'
+  message: string
+}
+
+export interface CustomerOrder {
+  id: string
+  orderNo: string
+  customerName: string
+  contactPhone: string
+  contactInfo: string
+  source: OrderSource
+  customRequirements: string
+  depositAmount: number
+  balanceAmount: number
+  totalAmount: number
+  deliveryDate: number
+  logisticsMethod: LogisticsMethod
+  trackingNo: string
+  status: OrderStatus
+  remarks: string
+
+  schemeId: string | null
+  schemeName: string
+  quotationId: string | null
+  moldType: MoldType
+
+  laborHours: number
+  totalCuringHours: number
+  materials: OrderMaterialItem[]
+  productionStages: ProductionStage[]
+
+  quotationConfirmed: boolean
+  depositPaid: boolean
+  balancePaid: boolean
+
+  reviewIds: string[]
+
+  alerts: OrderAlert[]
+
+  createdAt: number
+  updatedAt: number
+}
 
 export type DefectType =
   | 'bubble'

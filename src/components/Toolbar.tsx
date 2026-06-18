@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '@/store/useStore'
 import { MOLD_SHAPE_MAP } from '@/utils/moldShapes'
-import { Save, FolderOpen, Download, Printer, Trash2, X, GitCompare, BookOpen, ClipboardList, Edit, Plus, Package, FileText } from 'lucide-react'
+import { Save, FolderOpen, Download, Printer, Trash2, X, GitCompare, BookOpen, ClipboardList, Edit, Plus, Package, FileText, LayoutGrid } from 'lucide-react'
 import SchemeComparison from './SchemeComparison'
 import ReviewEditor from './ReviewEditor'
 import KnowledgeDrawer from './KnowledgeDrawer'
 import InventoryPanel from './InventoryPanel'
 import QuotationPanel from './QuotationPanel'
+import OrderKanban from './OrderKanban'
 
 export default function Toolbar() {
   const schemes = useStore((s) => s.schemes)
@@ -40,6 +41,8 @@ export default function Toolbar() {
   const [reviewSchemeId, setReviewSchemeId] = useState<string>('')
   const [showInventory, setShowInventory] = useState(false)
   const [showQuotation, setShowQuotation] = useState(false)
+  const [showOrderKanban, setShowOrderKanban] = useState(false)
+  const orderCount = useStore((s) => s.customerOrders.length)
 
   const handleSave = () => {
     if (schemeName.trim()) {
@@ -421,6 +424,20 @@ export default function Toolbar() {
           )}
         </button>
 
+        <button
+          onClick={() => setShowOrderKanban(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+          style={{ background: 'rgba(59,130,246,0.15)', color: '#60A5FA', border: '1px solid rgba(59,130,246,0.25)' }}
+        >
+          <LayoutGrid size={14} />
+          订单看板
+          {orderCount > 0 && (
+            <span className="rounded-full px-1.5 text-xs" style={{ background: 'rgba(59,130,246,0.25)', color: '#60A5FA' }}>
+              {orderCount}
+            </span>
+          )}
+        </button>
+
         {currentSchemeId && (
           <button
             onClick={() => handleOpenReview(currentSchemeId)}
@@ -481,6 +498,11 @@ export default function Toolbar() {
         open={showQuotation}
         onClose={() => setShowQuotation(false)}
         onOpenInventory={() => { setShowQuotation(false); setShowInventory(true) }}
+      />
+
+      <OrderKanban
+        open={showOrderKanban}
+        onClose={() => setShowOrderKanban(false)}
       />
 
       {showSaveDialog && (

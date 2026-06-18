@@ -17,7 +17,10 @@ import type {
   InventoryCategory,
   Quotation,
   QuotationStatus,
+  CustomerOrder,
+  OrderStatus,
 } from '../types'
+import { updateOrderStatus, advanceStage, generateOrderAlerts } from '../utils/orderScheduler'
 
 const DEFAULT_AMBIENT_TEMP = 25
 
@@ -35,6 +38,7 @@ interface EditorState {
   knowledgeCards: KnowledgeCard[]
   inventoryMaterials: InventoryMaterial[]
   quotations: Quotation[]
+  customerOrders: CustomerOrder[]
 
   setMoldType: (type: MoldType) => void
   setAmbientTemp: (temp: number) => void
@@ -77,6 +81,13 @@ interface EditorState {
   addQuotation: (quotation: Quotation) => string
   updateQuotation: (id: string, updates: Partial<Quotation>) => void
   deleteQuotation: (id: string) => void
+
+  addCustomerOrder: (order: CustomerOrder) => string
+  updateCustomerOrder: (id: string, updates: Partial<CustomerOrder>) => void
+  deleteCustomerOrder: (id: string) => void
+  advanceOrderStage: (id: string) => void
+  setCustomerOrderStatus: (id: string, status: OrderStatus) => void
+  refreshOrderAlerts: (id: string) => void
 
   showKnowledgeDrawer: boolean
   setShowKnowledgeDrawer: (show: boolean) => void
@@ -261,6 +272,7 @@ let reviewCounter = 0
 let knowledgeCounter = 0
 let inventoryCounter = 0
 let quotationCounter = 0
+let orderCounter = 0
 
 function migrateInventoryMaterial(material: unknown): InventoryMaterial {
   const m = material as Partial<InventoryMaterial> & { [key: string]: unknown }
@@ -304,6 +316,41 @@ function migrateQuotation(quotation: unknown): Quotation {
   return q as Quotation
 }
 
+function migrateCustomerOrder(order: unknown): CustomerOrder {
+  const o = order as Partial<CustomerOrder> & { [key: string]: unknown }
+  if (!o.id) o.id = `order-${Date.now()}-${++orderCounter}`
+  if (!o.orderNo) o.orderNo = `DD${new Date().toISOString().slice(0, 10).replace(/-/g, '')}${Math.floor(Math.random() * 9000 + 1000)}`
+  if (!o.customerName) o.customerName = ''
+  if (!o.contactPhone) o.contactPhone = ''
+  if (!o.contactInfo) o.contactInfo = ''
+  if (!o.source) o.source = 'other'
+  if (!o.customRequirements) o.customRequirements = ''
+  if (typeof o.depositAmount !== 'number') o.depositAmount = 0
+  if (typeof o.balanceAmount !== 'number') o.balanceAmount = 0
+  if (typeof o.totalAmount !== 'number') o.totalAmount = 0
+  if (typeof o.deliveryDate !== 'number') o.deliveryDate = Date.now() + 7 * 24 * 60 * 60 * 1000
+  if (!o.logisticsMethod) o.logisticsMethod = 'express'
+  if (!o.trackingNo) o.trackingNo = ''
+  if (!o.status) o.status = 'pending_material'
+  if (!o.remarks) o.remarks = ''
+  if (!o.schemeId) o.schemeId = null
+  if (!o.schemeName) o.schemeName = ''
+  if (!o.quotationId) o.quotationId = null
+  if (!o.moldType) o.moldType = 'pendant'
+  if (typeof o.laborHours !== 'number') o.laborHours = 0
+  if (typeof o.totalCuringHours !== 'number') o.totalCuringHours = 0
+  if (!o.materials || !Array.isArray(o.materials)) o.materials = []
+  if (!o.productionStages || !Array.isArray(o.productionStages)) o.productionStages = []
+  if (typeof o.quotationConfirmed !== 'boolean') o.quotationConfirmed = false
+  if (typeof o.depositPaid !== 'boolean') o.depositPaid = false
+  if (typeof o.balancePaid !== 'boolean') o.balancePaid = false
+  if (!o.reviewIds || !Array.isArray(o.reviewIds)) o.reviewIds = []
+  if (!o.alerts || !Array.isArray(o.alerts)) o.alerts = []
+  if (typeof o.createdAt !== 'number') o.createdAt = Date.now()
+  if (typeof o.updatedAt !== 'number') o.updatedAt = Date.now()
+  return o as CustomerOrder
+}
+
 export const useStore = create<EditorState>()(
   persist(
     (set, get) => {
@@ -322,6 +369,7 @@ export const useStore = create<EditorState>()(
         knowledgeCards: [],
         inventoryMaterials: [],
         quotations: [],
+        customerOrders: [],
         showKnowledgeDrawer: false,
         viewingReviewId: null,
 
@@ -658,6 +706,54 @@ export const useStore = create<EditorState>()(
           quotations: state.quotations.filter((q) => q.id !== id),
         })),
 
+      addCustomerOrder: (order) => {
+        orderCounter++
+        const id = order.id || `order-${Date.now()}-${orderCounter}`
+        const newOrder: CustomerOrder = {
+          ...order,
+          id,
+        }
+        set((state) => ({ customerOrders: [...state.customerOrders, newOrder] }))
+        return id
+      },
+
+      updateCustomerOrder: (id, updates) =>
+        set((state) => ({
+          customerOrders: state.customerOrders.map((o) => {
+            if (o.id !== id) return o
+            const updated = { ...o, ...updates, updatedAt: Date.now() }
+            updated.alerts = generateOrderAlerts(updated)
+            return updated
+          }),
+        })),
+
+      deleteCustomerOrder: (id) =>
+        set((state) => ({
+          customerOrders: state.customerOrders.filter((o) => o.id !== id),
+        })),
+
+      advanceOrderStage: (id) =>
+        set((state) => ({
+          customerOrders: state.customerOrders.map((o) =>
+            o.id === id ? advanceStage(o) : o
+          ),
+        })),
+
+      setCustomerOrderStatus: (id, status) =>
+        set((state) => ({
+          customerOrders: state.customerOrders.map((o) =>
+            o.id === id ? updateOrderStatus(o, status) : o
+          ),
+        })),
+
+      refreshOrderAlerts: (id) =>
+        set((state) => ({
+          customerOrders: state.customerOrders.map((o) => {
+            if (o.id !== id) return o
+            return { ...o, alerts: generateOrderAlerts(o) }
+          }),
+        })),
+
       setViewingReviewId: (id) => {
         set({ viewingReviewId: id })
         if (id) {
@@ -674,6 +770,7 @@ export const useStore = create<EditorState>()(
         knowledgeCards: state.knowledgeCards.map(migrateKnowledgeCard),
         inventoryMaterials: state.inventoryMaterials.map(migrateInventoryMaterial),
         quotations: state.quotations.map(migrateQuotation),
+        customerOrders: state.customerOrders.map(migrateCustomerOrder),
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
@@ -688,6 +785,9 @@ export const useStore = create<EditorState>()(
           }
           if (!state.quotations) {
             state.quotations = []
+          }
+          if (!state.customerOrders) {
+            state.customerOrders = []
           }
           if (!state.schemes) {
             state.schemes = []
@@ -705,6 +805,9 @@ export const useStore = create<EditorState>()(
           }
           if (state.quotations.length > 0) {
             state.quotations = state.quotations.map(migrateQuotation)
+          }
+          if (state.customerOrders.length > 0) {
+            state.customerOrders = state.customerOrders.map(migrateCustomerOrder)
           }
         }
       },

@@ -18,7 +18,9 @@ import {
   Filter,
   DollarSign,
   Printer,
+  ShoppingCart,
 } from 'lucide-react'
+import OrderForm from './OrderForm'
 
 const MOLD_LABELS: Record<MoldType, string> = {
   pendant: '吊坠',
@@ -47,6 +49,8 @@ export default function QuotationPanel({ open, onClose, onOpenInventory }: Props
 
   const [activeTab, setActiveTab] = useState<'generate' | 'history'>('generate')
   const [viewingId, setViewingId] = useState<string | null>(null)
+  const [showOrderForm, setShowOrderForm] = useState(false)
+  const [orderFromQuotationId, setOrderFromQuotationId] = useState<string | null>(null)
 
   const [customerName, setCustomerName] = useState('')
   const [laborHours, setLaborHours] = useState<number>(2)
@@ -535,6 +539,16 @@ export default function QuotationPanel({ open, onClose, onOpenInventory }: Props
                   >
                     <Printer size={12} /> 打印
                   </button>
+                  <button
+                    onClick={() => {
+                      setOrderFromQuotationId(viewingId)
+                      setShowOrderForm(true)
+                    }}
+                    className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium"
+                    style={{ background: 'rgba(59,130,246,0.2)', color: '#60A5FA', border: '1px solid rgba(59,130,246,0.3)' }}
+                  >
+                    <ShoppingCart size={12} /> 转为订单
+                  </button>
                 </div>
               </div>
 
@@ -609,6 +623,12 @@ export default function QuotationPanel({ open, onClose, onOpenInventory }: Props
           )}
         </div>
       </div>
+
+      <OrderForm
+        open={showOrderForm}
+        onClose={() => { setShowOrderForm(false); setOrderFromQuotationId(null) }}
+        preselectedQuotationId={orderFromQuotationId}
+      />
     </div>
   )
 }
