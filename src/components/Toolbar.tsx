@@ -1,10 +1,10 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useStore } from '@/store/useStore'
 import { MOLD_SHAPE_MAP } from '@/utils/moldShapes'
-import { MATERIAL_TEMPLATES } from '@/utils/materialTemplates'
-import { Save, FolderOpen, Download, Printer, Trash2, X, GitCompare } from 'lucide-react'
+import { Save, FolderOpen, Download, Printer, Trash2, X, GitCompare, BookOpen, ClipboardList, Edit, Plus } from 'lucide-react'
 import SchemeComparison from './SchemeComparison'
-import html2canvas from 'html2canvas'
+import ReviewEditor from './ReviewEditor'
+import KnowledgeDrawer from './KnowledgeDrawer'
 
 export default function Toolbar() {
   const schemes = useStore((s) => s.schemes)
@@ -13,14 +13,25 @@ export default function Toolbar() {
   const loadScheme = useStore((s) => s.loadScheme)
   const deleteScheme = useStore((s) => s.deleteScheme)
   const layers = useStore((s) => s.layers)
+  const stages = useStore((s) => s.stages)
   const currentMoldType = useStore((s) => s.currentMoldType)
+  const ambientTemp = useStore((s) => s.ambientTemp)
   const clearCanvas = useStore((s) => s.clearCanvas)
+  const reviewRecords = useStore((s) => s.reviewRecords)
+  const knowledgeCards = useStore((s) => s.knowledgeCards)
+  const addReviewRecord = useStore((s) => s.addReviewRecord)
+  const updateReviewRecord = useStore((s) => s.updateReviewRecord)
+  const generateKnowledgeCard = useStore((s) => s.generateKnowledgeCard)
 
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [schemeName, setSchemeName] = useState('')
   const [showSchemeList, setShowSchemeList] = useState(false)
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [showComparison, setShowComparison] = useState(false)
+  const [showReviewEditor, setShowReviewEditor] = useState(false)
+  const [showKnowledgeDrawer, setShowKnowledgeDrawer] = useState(false)
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null)
+  const [reviewSchemeId, setReviewSchemeId] = useState<string>('')
 
   const handleSave = () => {
     if (schemeName.trim()) {
@@ -28,6 +39,38 @@ export default function Toolbar() {
       setSchemeName('')
       setShowSaveDialog(false)
     }
+  }
+
+  const handleOpenReview = (schemeId: string) => {
+    setReviewSchemeId(schemeId)
+    setEditingReviewId(null)
+    setShowSchemeList(false)
+    setShowReviewEditor(true)
+  }
+
+  const handleEditReview = (reviewId: string) => {
+    setEditingReviewId(reviewId)
+    const review = reviewRecords.find((r) => r.id === reviewId)
+    if (review) {
+      setReviewSchemeId(review.schemeId)
+    }
+    setShowReviewEditor(true)
+  }
+
+  const handleSaveReview = (record: any) => {
+    if (editingReviewId) {
+      updateReviewRecord(editingReviewId, record)
+      generateKnowledgeCard(editingReviewId)
+    } else {
+      const newId = addReviewRecord(record)
+      generateKnowledgeCard(newId)
+    }
+    setEditingReviewId(null)
+    setShowReviewEditor(false)
+  }
+
+  const getReviewsBySchemeId = (schemeId: string) => {
+    return reviewRecords.filter((r) => r.schemeId === schemeId)
   }
 
   const handleExportImage = async () => {
@@ -214,30 +257,56 @@ export default function Toolbar() {
               {schemes.length === 0 && (
                 <div className="px-4 py-3 text-xs" style={{ color: '#8B7355' }}>暂无保存的方案</div>
               )}
-              {schemes.map((s) => (
-                <div
-                  key={s.id}
-                  className="flex items-center justify-between px-3 py-2"
-                  style={{
-                    background: s.id === currentSchemeId ? 'rgba(201,169,110,0.15)' : 'transparent',
-                    borderBottom: '1px solid rgba(201,169,110,0.1)',
-                  }}
-                >
-                  <button
-                    onClick={() => { loadScheme(s.id); setShowSchemeList(false) }}
-                    className="flex-1 text-left text-xs"
-                    style={{ color: '#FFF8F0' }}
+              {schemes.map((s) => {
+                const reviews = getReviewsBySchemeId(s.id)
+                return (
+                  <div
+                    key={s.id}
+                    className="px-3 py-2"
+                    style={{
+                      background: s.id === currentSchemeId ? 'rgba(201,169,110,0.15)' : 'transparent',
+                      borderBottom: '1px solid rgba(201,169,110,0.1)',
+                    }}
                   >
-                    {s.name}
-                    <span className="ml-2" style={{ color: '#8B7355' }}>
-                      {MOLD_SHAPE_MAP[s.moldType].label}
-                    </span>
-                  </button>
-                  <button onClick={() => deleteScheme(s.id)} style={{ color: '#8B7355' }}>
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              ))}
+                    <div className="flex items-center justify-between mb-1">
+                      <button
+                        onClick={() => { loadScheme(s.id); setShowSchemeList(false) }}
+                        className="flex-1 text-left text-xs"
+                        style={{ color: '#FFF8F0' }}
+                      >
+                        {s.name}
+                        <span className="ml-2" style={{ color: '#8B7355' }}>
+                          {MOLD_SHAPE_MAP[s.moldType].label}
+                        </span>
+                      </button>
+                      <button onClick={() => deleteScheme(s.id)} style={{ color: '#8B7355' }}>
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {reviews.length > 0 ? (
+                        <button
+                          onClick={() => { handleEditReview(reviews[0].id); setShowSchemeList(false) }}
+                          className="flex items-center gap-1 text-xs"
+                          style={{ color: '#6B8E6B' }}
+                        >
+                          <Edit size={11} />
+                          查看复盘 ({reviews.length})
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => { handleOpenReview(s.id) }}
+                          className="flex items-center gap-1 text-xs"
+                          style={{ color: '#C9A96E' }}
+                        >
+                          <Plus size={11} />
+                          创建复盘
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
@@ -291,6 +360,31 @@ export default function Toolbar() {
         </button>
 
         <button
+          onClick={() => setShowKnowledgeDrawer(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+          style={{ background: 'rgba(107,142,107,0.15)', color: '#6B8E6B', border: '1px solid rgba(107,142,107,0.25)' }}
+        >
+          <BookOpen size={14} />
+          知识库
+          {knowledgeCards.length > 0 && (
+            <span className="rounded-full px-1.5 text-xs" style={{ background: 'rgba(107,142,107,0.3)', color: '#6B8E6B' }}>
+              {knowledgeCards.length}
+            </span>
+          )}
+        </button>
+
+        {currentSchemeId && (
+          <button
+            onClick={() => handleOpenReview(currentSchemeId)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+            style={{ background: 'rgba(201,169,110,0.2)', color: '#C9A96E', border: '1px solid rgba(201,169,110,0.3)' }}
+          >
+            <ClipboardList size={14} />
+            复盘
+          </button>
+        )}
+
+        <button
           onClick={clearCanvas}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
           style={{ background: 'rgba(239,68,68,0.15)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}
@@ -300,6 +394,35 @@ export default function Toolbar() {
       </div>
 
       <SchemeComparison open={showComparison} onClose={() => setShowComparison(false)} />
+
+      <KnowledgeDrawer
+        open={showKnowledgeDrawer}
+        onClose={() => setShowKnowledgeDrawer(false)}
+        knowledgeCards={knowledgeCards}
+        reviewRecords={reviewRecords}
+        onViewReview={(reviewId) => {
+          setShowKnowledgeDrawer(false)
+          handleEditReview(reviewId)
+        }}
+      />
+
+      {reviewSchemeId && (
+        <ReviewEditor
+          open={showReviewEditor}
+          onClose={() => {
+            setShowReviewEditor(false)
+            setEditingReviewId(null)
+          }}
+          onSave={handleSaveReview}
+          editRecord={editingReviewId ? reviewRecords.find((r) => r.id === editingReviewId) || null : null}
+          schemeId={reviewSchemeId}
+          schemeName={schemes.find((s) => s.id === reviewSchemeId)?.name || ''}
+          moldType={schemes.find((s) => s.id === reviewSchemeId)?.moldType || currentMoldType}
+          layers={schemes.find((s) => s.id === reviewSchemeId)?.layers || layers}
+          stages={schemes.find((s) => s.id === reviewSchemeId)?.stages || stages}
+          ambientTemp={schemes.find((s) => s.id === reviewSchemeId)?.ambientTemp || ambientTemp}
+        />
+      )}
 
       {showSaveDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)' }}>

@@ -1,6 +1,19 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { MoldType, Layer, MaterialElement, Scheme, MaterialCategory, Stage, StageType } from '../types'
+import type {
+  MoldType,
+  Layer,
+  MaterialElement,
+  Scheme,
+  MaterialCategory,
+  Stage,
+  StageType,
+  ReviewRecord,
+  KnowledgeCard,
+  DefectItem,
+  DefoamingMethod,
+  SuccessRate,
+} from '../types'
 
 const DEFAULT_AMBIENT_TEMP = 25
 
@@ -14,6 +27,8 @@ interface EditorState {
   selectedLayerId: string | null
   schemes: Scheme[]
   currentSchemeId: string | null
+  reviewRecords: ReviewRecord[]
+  knowledgeCards: KnowledgeCard[]
 
   setMoldType: (type: MoldType) => void
   setAmbientTemp: (temp: number) => void
@@ -39,6 +54,15 @@ interface EditorState {
   loadScheme: (id: string) => void
   deleteScheme: (id: string) => void
   clearCanvas: () => void
+
+  addReviewRecord: (record: Omit<ReviewRecord, 'id' | 'createdAt' | 'updatedAt'>) => string
+  updateReviewRecord: (id: string, updates: Partial<ReviewRecord>) => void
+  deleteReviewRecord: (id: string) => void
+  getReviewsBySchemeId: (schemeId: string) => ReviewRecord[]
+
+  addKnowledgeCard: (card: Omit<KnowledgeCard, 'id' | 'createdAt'>) => string
+  deleteKnowledgeCard: (id: string) => void
+  generateKnowledgeCard: (reviewId: string) => string | null
 }
 
 let layerCounter = 0
@@ -56,7 +80,7 @@ function createDefaultStages(): Stage[] {
       layerIds: [],
       glueMl: 0,
       thickness: 1,
-      waitHours: 0,
+      waitHours: 12,
       ambientTemp: temp,
       materialBatch: '',
       notes: '',
@@ -69,7 +93,7 @@ function createDefaultStages(): Stage[] {
       layerIds: [],
       glueMl: 0,
       thickness: 1.5,
-      waitHours: 0,
+      waitHours: 18,
       ambientTemp: temp,
       materialBatch: '',
       notes: '',
@@ -82,7 +106,7 @@ function createDefaultStages(): Stage[] {
       layerIds: [],
       glueMl: 0,
       thickness: 1.5,
-      waitHours: 0,
+      waitHours: 24,
       ambientTemp: temp,
       materialBatch: '',
       notes: '',
@@ -95,7 +119,7 @@ function createDefaultStages(): Stage[] {
       layerIds: [],
       glueMl: 0,
       thickness: 0.5,
-      waitHours: 0,
+      waitHours: 12,
       ambientTemp: temp,
       materialBatch: '',
       notes: '',
@@ -108,11 +132,114 @@ function migrateScheme(scheme: unknown): Scheme {
   if (!s.stages || !Array.isArray(s.stages) || s.stages.length === 0) {
     s.stages = createDefaultStages()
   }
-  if (typeof s.ambientTemp !== 'number') {
+  if (typeof s.ambientTemp !== 'number' || s.ambientTemp < 5 || s.ambientTemp > 50) {
     s.ambientTemp = DEFAULT_AMBIENT_TEMP
   }
+  s.stages = s.stages.map((stage: any) => {
+    if (typeof stage.ambientTemp !== 'number' || stage.ambientTemp < 5 || stage.ambientTemp > 50) {
+      stage.ambientTemp = s.ambientTemp
+    }
+    return stage
+  })
   return s as Scheme
 }
+
+function migrateReviewRecord(record: unknown): ReviewRecord {
+  const r = record as Partial<ReviewRecord> & { [key: string]: unknown }
+  if (!r.defects || !Array.isArray(r.defects)) {
+    r.defects = []
+  }
+  if (!r.photoUrls || !Array.isArray(r.photoUrls)) {
+    r.photoUrls = []
+  }
+  if (!r.photoNotes) {
+    r.photoNotes = ''
+  }
+  if (!r.stageTemps || !Array.isArray(r.stageTemps)) {
+    r.stageTemps = []
+  }
+  if (!r.materialCategories || !Array.isArray(r.materialCategories)) {
+    r.materialCategories = []
+  }
+  if (!r.actualStatus) {
+    r.actualStatus = ''
+  }
+  if (!r.improvements) {
+    r.improvements = ''
+  }
+  if (typeof r.actualCuringHours !== 'number') {
+    r.actualCuringHours = 0
+  }
+  if (typeof r.ambientHumidity !== 'number') {
+    r.ambientHumidity = 50
+  }
+  if (!r.abRatio) {
+    r.abRatio = '3:1'
+  }
+  if (!r.defoamingMethod) {
+    r.defoamingMethod = 'none'
+  }
+  if (typeof r.demoldTime !== 'number') {
+    r.demoldTime = 24
+  }
+  if (!r.successRate) {
+    r.successRate = 'good'
+  }
+  if (typeof r.totalThickness !== 'number') {
+    r.totalThickness = 0
+  }
+  if (!r.schemeName) {
+    r.schemeName = ''
+  }
+  if (typeof r.ambientTemp !== 'number' || r.ambientTemp < 5 || r.ambientTemp > 50) {
+    r.ambientTemp = 25
+  }
+  if (typeof r.ambientHumidity !== 'number' || r.ambientHumidity < 0 || r.ambientHumidity > 100) {
+    r.ambientHumidity = 50
+  }
+  if (typeof r.actualCuringHours !== 'number' || r.actualCuringHours < 0) {
+    r.actualCuringHours = 24
+  }
+  if (typeof r.demoldTime !== 'number' || r.demoldTime < 0) {
+    r.demoldTime = 24
+  }
+  return r as ReviewRecord
+}
+
+function migrateKnowledgeCard(card: unknown): KnowledgeCard {
+  const c = card as Partial<KnowledgeCard> & { [key: string]: unknown }
+  if (!c.defects || !Array.isArray(c.defects)) {
+    c.defects = []
+  }
+  if (!c.materialCategories || !Array.isArray(c.materialCategories)) {
+    c.materialCategories = []
+  }
+  if (!c.improvements) {
+    c.improvements = ''
+  }
+  if (typeof c.avgTemp !== 'number' || c.avgTemp < 5 || c.avgTemp > 50) {
+    c.avgTemp = 25
+  }
+  if (typeof c.actualCuringHours !== 'number' || c.actualCuringHours < 0) {
+    c.actualCuringHours = 0
+  }
+  if (!c.defoamingMethod) {
+    c.defoamingMethod = 'none'
+  }
+  if (!c.schemeName) {
+    c.schemeName = ''
+  }
+  if (typeof c.totalThickness !== 'number' || c.totalThickness < 0) {
+    c.totalThickness = 0
+  }
+  if (!c.successRate) {
+    c.successRate = 'good'
+  }
+  return c as KnowledgeCard
+}
+
+let reviewCounter = 0
+let knowledgeCounter = 0
 
 export const useStore = create<EditorState>()(
   persist(
@@ -124,10 +251,12 @@ export const useStore = create<EditorState>()(
         stages: initialStages,
         currentStageId: initialStages[0]?.id || null,
         ambientTemp: DEFAULT_AMBIENT_TEMP,
-      selectedElementId: null,
-      selectedLayerId: null,
-      schemes: [],
-      currentSchemeId: null,
+        selectedElementId: null,
+        selectedLayerId: null,
+        schemes: [],
+        currentSchemeId: null,
+        reviewRecords: [],
+        knowledgeCards: [],
 
       setMoldType: (type) => set({ currentMoldType: type }),
 
@@ -330,13 +459,116 @@ export const useStore = create<EditorState>()(
           selectedLayerId: null,
         })
       },
+
+      addReviewRecord: (record) => {
+        reviewCounter++
+        const id = `review-${Date.now()}-${reviewCounter}`
+        const now = Date.now()
+        const newRecord: ReviewRecord = {
+          ...record,
+          id,
+          createdAt: now,
+          updatedAt: now,
+        }
+        set((state) => ({ reviewRecords: [...state.reviewRecords, newRecord] }))
+        return id
+      },
+
+      updateReviewRecord: (id, updates) =>
+        set((state) => ({
+          reviewRecords: state.reviewRecords.map((r) =>
+            r.id === id ? { ...r, ...updates, updatedAt: Date.now() } : r
+          ),
+        })),
+
+      deleteReviewRecord: (id) =>
+        set((state) => {
+          const remainingReviews = state.reviewRecords.filter((r) => r.id !== id)
+          const remainingCards = state.knowledgeCards.filter((c) => c.reviewId !== id)
+          return {
+            reviewRecords: remainingReviews,
+            knowledgeCards: remainingCards,
+          }
+        }),
+
+      getReviewsBySchemeId: (schemeId) => {
+        return get().reviewRecords.filter((r) => r.schemeId === schemeId)
+      },
+
+      addKnowledgeCard: (card) => {
+        knowledgeCounter++
+        const id = `knowledge-${Date.now()}-${knowledgeCounter}`
+        const newCard: KnowledgeCard = {
+          ...card,
+          id,
+          createdAt: Date.now(),
+        }
+        set((state) => ({ knowledgeCards: [...state.knowledgeCards, newCard] }))
+        return id
+      },
+
+      deleteKnowledgeCard: (id) =>
+        set((state) => ({
+          knowledgeCards: state.knowledgeCards.filter((c) => c.id !== id),
+        })),
+
+      generateKnowledgeCard: (reviewId) => {
+        const review = get().reviewRecords.find((r) => r.id === reviewId)
+        if (!review) return null
+        const existing = get().knowledgeCards.find((c) => c.reviewId === reviewId)
+        if (existing) return existing.id
+
+        const avgTemp =
+          review.stageTemps.length > 0
+            ? review.stageTemps.reduce((s, t) => s + t.temp, 0) / review.stageTemps.length
+            : review.ambientTemp
+
+        const card: Omit<KnowledgeCard, 'id' | 'createdAt'> = {
+          reviewId: review.id,
+          schemeId: review.schemeId,
+          schemeName: review.schemeName,
+          moldType: review.moldType,
+          defects: review.defects.map((d) => d.type),
+          successRate: review.successRate,
+          totalThickness: review.totalThickness,
+          avgTemp,
+          materialCategories: review.materialCategories,
+          improvements: review.improvements,
+          actualCuringHours: review.actualCuringHours,
+          defoamingMethod: review.defoamingMethod,
+        }
+        return get().addKnowledgeCard(card)
+      },
     }
   },
     {
       name: 'resin-editor-storage',
       partialize: (state) => ({
         schemes: state.schemes.map(migrateScheme),
+        reviewRecords: state.reviewRecords.map(migrateReviewRecord),
+        knowledgeCards: state.knowledgeCards.map(migrateKnowledgeCard),
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          if (!state.reviewRecords) {
+            state.reviewRecords = []
+          }
+          if (!state.knowledgeCards) {
+            state.knowledgeCards = []
+          }
+          if (!state.schemes) {
+            state.schemes = []
+          } else {
+            state.schemes = state.schemes.map(migrateScheme)
+          }
+          if (state.reviewRecords.length > 0) {
+            state.reviewRecords = state.reviewRecords.map(migrateReviewRecord)
+          }
+          if (state.knowledgeCards.length > 0) {
+            state.knowledgeCards = state.knowledgeCards.map(migrateKnowledgeCard)
+          }
+        }
+      },
     }
   )
 )

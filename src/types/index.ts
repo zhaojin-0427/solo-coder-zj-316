@@ -3,6 +3,86 @@ export type MaterialCategory = 'driedFlower' | 'glitter' | 'goldFoil' | 'colorPo
 export type StageType = 'base' | 'material' | 'sealant' | 'correction'
 export type RiskLevel = 'low' | 'medium' | 'high'
 
+export type DefectType =
+  | 'bubble'
+  | 'fogging'
+  | 'cracking'
+  | 'delamination'
+  | 'materialDrift'
+  | 'pigmentSettling'
+  | 'surfaceDimple'
+  | 'yellowing'
+  | 'shrinkage'
+  | 'other'
+
+export type DefoamingMethod = 'none' | 'heatGun' | 'toothpick' | 'vacuum' | 'stirSlowly' | 'stillStanding'
+
+export type SuccessRate = 'perfect' | 'good' | 'average' | 'poor' | 'failed'
+
+export interface DefectItem {
+  type: DefectType
+  severity: 'mild' | 'moderate' | 'severe'
+  description: string
+}
+
+export interface ReviewRecord {
+  id: string
+  schemeId: string
+  schemeName: string
+  moldType: MoldType
+  actualStatus: string
+  defects: DefectItem[]
+  actualCuringHours: number
+  ambientTemp: number
+  ambientHumidity: number
+  abRatio: string
+  defoamingMethod: DefoamingMethod
+  demoldTime: number
+  photoUrls: string[]
+  photoNotes: string
+  improvements: string
+  successRate: SuccessRate
+  totalThickness: number
+  materialCategories: MaterialCategory[]
+  stageTemps: { stageId: string; stageName: string; temp: number }[]
+  createdAt: number
+  updatedAt: number
+}
+
+export interface KnowledgeCard {
+  id: string
+  reviewId: string
+  schemeId: string
+  schemeName: string
+  moldType: MoldType
+  defects: DefectType[]
+  successRate: SuccessRate
+  totalThickness: number
+  avgTemp: number
+  materialCategories: MaterialCategory[]
+  improvements: string
+  actualCuringHours: number
+  defoamingMethod: DefoamingMethod
+  createdAt: number
+}
+
+export interface KnowledgeFilter {
+  moldTypes: MoldType[]
+  materialCategories: MaterialCategory[]
+  defectTypes: DefectType[]
+  tempRange: [number, number] | null
+  successRates: SuccessRate[]
+  keyword: string
+}
+
+export interface SimilarCase {
+  knowledgeCard: KnowledgeCard
+  reviewRecord: ReviewRecord
+  matchScore: number
+  matchReasons: string[]
+  suggestedMeasures: string[]
+}
+
 export interface Stage {
   id: string
   name: string
