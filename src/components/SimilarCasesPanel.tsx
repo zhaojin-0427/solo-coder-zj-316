@@ -4,6 +4,7 @@ import type { SimilarCase, Layer, Stage, MoldType, KnowledgeCard, ReviewRecord }
 import { findSimilarCases, generatePrecautions } from '../utils/similarCaseMatcher'
 import { getDefectLabel, getDefectIcon, getSuccessRateLabel, getSuccessRateColor } from '../utils/defectLibrary'
 import { MOLD_SHAPE_MAP } from '../utils/moldShapes'
+import { useStore } from '../store/useStore'
 
 interface Props {
   moldType: MoldType
@@ -12,8 +13,6 @@ interface Props {
   ambientTemp: number
   knowledgeCards: KnowledgeCard[]
   reviewRecords: ReviewRecord[]
-  onOpenKnowledge: () => void
-  onViewCase?: (reviewId: string) => void
 }
 
 export default function SimilarCasesPanel({
@@ -23,9 +22,9 @@ export default function SimilarCasesPanel({
   ambientTemp,
   knowledgeCards,
   reviewRecords,
-  onOpenKnowledge,
-  onViewCase,
 }: Props) {
+  const setShowKnowledgeDrawer = useStore((s) => s.setShowKnowledgeDrawer)
+  const setViewingReviewId = useStore((s) => s.setViewingReviewId)
   const similarCases = useMemo(
     () =>
       findSimilarCases(
@@ -94,7 +93,7 @@ export default function SimilarCasesPanel({
           <h3 className="text-sm font-semibold" style={{ color: '#C9A96E' }}>智能提醒</h3>
         </div>
         <button
-          onClick={onOpenKnowledge}
+          onClick={() => setShowKnowledgeDrawer(true)}
           className="flex items-center gap-1 text-xs"
           style={{ color: '#8B7355' }}
         >
@@ -157,7 +156,7 @@ export default function SimilarCasesPanel({
                   key={sc.knowledgeCard.id}
                   className="rounded-lg p-2.5 cursor-pointer"
                   style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(201,169,110,0.1)' }}
-                  onClick={() => onViewCase?.(sc.knowledgeCard.reviewId)}
+                  onClick={() => setViewingReviewId(sc.knowledgeCard.reviewId)}
                 >
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-xs font-medium truncate" style={{ color: '#FFF8F0' }}>

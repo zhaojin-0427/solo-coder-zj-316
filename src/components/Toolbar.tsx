@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore } from '@/store/useStore'
 import { MOLD_SHAPE_MAP } from '@/utils/moldShapes'
 import { Save, FolderOpen, Download, Printer, Trash2, X, GitCompare, BookOpen, ClipboardList, Edit, Plus } from 'lucide-react'
@@ -22,6 +22,10 @@ export default function Toolbar() {
   const addReviewRecord = useStore((s) => s.addReviewRecord)
   const updateReviewRecord = useStore((s) => s.updateReviewRecord)
   const generateKnowledgeCard = useStore((s) => s.generateKnowledgeCard)
+  const showKnowledgeDrawer = useStore((s) => s.showKnowledgeDrawer)
+  const setShowKnowledgeDrawer = useStore((s) => s.setShowKnowledgeDrawer)
+  const viewingReviewId = useStore((s) => s.viewingReviewId)
+  const setViewingReviewId = useStore((s) => s.setViewingReviewId)
 
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [schemeName, setSchemeName] = useState('')
@@ -29,7 +33,6 @@ export default function Toolbar() {
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [showComparison, setShowComparison] = useState(false)
   const [showReviewEditor, setShowReviewEditor] = useState(false)
-  const [showKnowledgeDrawer, setShowKnowledgeDrawer] = useState(false)
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null)
   const [reviewSchemeId, setReviewSchemeId] = useState<string>('')
 
@@ -72,6 +75,23 @@ export default function Toolbar() {
   const getReviewsBySchemeId = (schemeId: string) => {
     return reviewRecords.filter((r) => r.schemeId === schemeId)
   }
+
+  useEffect(() => {
+    if (viewingReviewId) {
+      const review = reviewRecords.find((r) => r.id === viewingReviewId)
+      if (review) {
+        setReviewSchemeId(review.schemeId)
+        setEditingReviewId(viewingReviewId)
+        setShowReviewEditor(true)
+      }
+    }
+  }, [viewingReviewId, reviewRecords])
+
+  useEffect(() => {
+    if (!showReviewEditor && viewingReviewId) {
+      setViewingReviewId(null)
+    }
+  }, [showReviewEditor, viewingReviewId, setViewingReviewId])
 
   const handleExportImage = async () => {
     const canvasEl = document.querySelector('#mold-canvas') as HTMLCanvasElement
@@ -401,8 +421,7 @@ export default function Toolbar() {
         knowledgeCards={knowledgeCards}
         reviewRecords={reviewRecords}
         onViewReview={(reviewId) => {
-          setShowKnowledgeDrawer(false)
-          handleEditReview(reviewId)
+          setViewingReviewId(reviewId)
         }}
       />
 

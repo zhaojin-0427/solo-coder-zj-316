@@ -63,6 +63,11 @@ interface EditorState {
   addKnowledgeCard: (card: Omit<KnowledgeCard, 'id' | 'createdAt'>) => string
   deleteKnowledgeCard: (id: string) => void
   generateKnowledgeCard: (reviewId: string) => string | null
+
+  showKnowledgeDrawer: boolean
+  setShowKnowledgeDrawer: (show: boolean) => void
+  viewingReviewId: string | null
+  setViewingReviewId: (id: string | null) => void
 }
 
 let layerCounter = 0
@@ -257,6 +262,8 @@ export const useStore = create<EditorState>()(
         currentSchemeId: null,
         reviewRecords: [],
         knowledgeCards: [],
+        showKnowledgeDrawer: false,
+        viewingReviewId: null,
 
       setMoldType: (type) => set({ currentMoldType: type }),
 
@@ -538,6 +545,15 @@ export const useStore = create<EditorState>()(
           defoamingMethod: review.defoamingMethod,
         }
         return get().addKnowledgeCard(card)
+      },
+
+      setShowKnowledgeDrawer: (show) => set({ showKnowledgeDrawer: show }),
+
+      setViewingReviewId: (id) => {
+        set({ viewingReviewId: id })
+        if (id) {
+          set({ showKnowledgeDrawer: false })
+        }
       },
     }
   },

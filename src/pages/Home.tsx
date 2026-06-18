@@ -48,7 +48,6 @@ export default function Home() {
             ambientTemp={ambientTemp}
             knowledgeCards={knowledgeCards}
             reviewRecords={reviewRecords}
-            onOpenKnowledge={() => {}}
           />
         ) : (
           <button
