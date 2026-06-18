@@ -30,6 +30,7 @@ export default function CuringPanel() {
   const stages = useStore((s) => s.stages)
   const ambientTemp = useStore((s) => s.ambientTemp)
   const currentMoldType = useStore((s) => s.currentMoldType)
+  const currentStageId = useStore((s) => s.currentStageId)
   const [showSteps, setShowSteps] = useState(false)
 
   const moldShape = MOLD_SHAPE_MAP[currentMoldType]
@@ -42,9 +43,10 @@ export default function CuringPanel() {
         moldShape.height,
         moldShape.areaMm2,
         stages,
-        ambientTemp
+        ambientTemp,
+        currentStageId
       ),
-    [layers, currentMoldType, moldShape, stages, ambientTemp]
+    [layers, currentMoldType, moldShape, stages, ambientTemp, currentStageId]
   )
 
   const stepCards = useMemo(

@@ -116,12 +116,14 @@ function migrateScheme(scheme: unknown): Scheme {
 
 export const useStore = create<EditorState>()(
   persist(
-    (set, get) => ({
-      currentMoldType: 'pendant',
-      layers: [],
-      stages: createDefaultStages(),
-      currentStageId: null,
-      ambientTemp: DEFAULT_AMBIENT_TEMP,
+    (set, get) => {
+      const initialStages = createDefaultStages()
+      return {
+        currentMoldType: 'pendant',
+        layers: [],
+        stages: initialStages,
+        currentStageId: initialStages[0]?.id || null,
+        ambientTemp: DEFAULT_AMBIENT_TEMP,
       selectedElementId: null,
       selectedLayerId: null,
       schemes: [],
@@ -129,7 +131,11 @@ export const useStore = create<EditorState>()(
 
       setMoldType: (type) => set({ currentMoldType: type }),
 
-      setAmbientTemp: (temp) => set({ ambientTemp: temp }),
+      setAmbientTemp: (temp) =>
+        set((state) => ({
+          ambientTemp: temp,
+          stages: state.stages.map((s) => ({ ...s, ambientTemp: temp })),
+        })),
 
       addLayer: (type, name) => {
         layerCounter++
@@ -314,15 +320,18 @@ export const useStore = create<EditorState>()(
           currentSchemeId: state.currentSchemeId === id ? null : state.currentSchemeId,
         })),
 
-      clearCanvas: () =>
+      clearCanvas: () => {
+        const newStages = createDefaultStages()
         set({
           layers: [],
-          stages: createDefaultStages(),
-          currentStageId: null,
+          stages: newStages,
+          currentStageId: newStages[0]?.id || null,
           selectedElementId: null,
           selectedLayerId: null,
-        }),
-    }),
+        })
+      },
+    }
+  },
     {
       name: 'resin-editor-storage',
       partialize: (state) => ({

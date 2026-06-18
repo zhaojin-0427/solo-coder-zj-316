@@ -307,7 +307,8 @@ export function estimateCuring(
   moldHeight: number,
   moldAreaMm2: number,
   stages?: Stage[],
-  ambientTemp?: number
+  ambientTemp?: number,
+  currentStageId?: string | null
 ): CuringEstimate {
   const effectiveTemp = ambientTemp ?? 25
   const layerDetails = calculateCuringTime(layers, moldAreaMm2, effectiveTemp)
@@ -331,12 +332,14 @@ export function estimateCuring(
   const overallRisk = getOverallRisk(stageDetails, warnings)
   const nextSuggestion = generateNextSuggestion(effectiveStages, stageDetails)
 
-  const currentStageRisk = stageDetails[0]
+  const targetStageId = currentStageId ?? (stageDetails[0]?.stageId || null)
+  const currentStageDetail = stageDetails.find((s) => s.stageId === targetStageId) ?? stageDetails[0]
+  const currentStageRisk = currentStageDetail
     ? {
-        stageId: stageDetails[0].stageId,
-        stageName: stageDetails[0].stageName,
-        level: stageDetails[0].riskLevel,
-        messages: stageDetails[0].riskMessages,
+        stageId: currentStageDetail.stageId,
+        stageName: currentStageDetail.stageName,
+        level: currentStageDetail.riskLevel,
+        messages: currentStageDetail.riskMessages,
       }
     : undefined
 

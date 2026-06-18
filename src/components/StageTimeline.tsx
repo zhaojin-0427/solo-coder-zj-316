@@ -98,7 +98,7 @@ export default function StageTimeline() {
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium" style={{ color: '#C9A96E' }}>制作阶段</span>
           <span className="text-xs" style={{ color: '#8B7355' }}>
-            ({sortedStages.length} 阶段
+            ({sortedStages.length} 阶段)
           </span>
         </div>
 
