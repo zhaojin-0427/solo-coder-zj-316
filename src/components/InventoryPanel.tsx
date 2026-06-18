@@ -267,10 +267,13 @@ export default function InventoryPanel({ open, onClose, onOpenQuotation }: Props
                     <span style={{ color: '#8B7355' }}>消耗 {c.consumedQty}{c.unit}</span>
                     <span style={{ color: '#87CEEB' }}>¥{c.subtotal.toFixed(2)}</span>
                     <span style={{ color: '#F59E0B' }}>损耗 ¥{c.wasteCost.toFixed(2)}</span>
-                    {c.remainingStock >= 0 && (
-                      <span style={{ color: c.remainingStock < c.consumedQty ? '#EF4444' : '#6B8E6B' }}>
-                        剩余 {c.remainingStock}{c.unit}
+                    {c.remainingStock !== -1 && (
+                      <span style={{ color: c.remainingStock < 0 ? '#EF4444' : '#6B8E6B' }}>
+                        {c.remainingStock < 0 ? '缺口 ' : '剩余 '}{c.remainingStock < 0 ? Math.abs(c.remainingStock) : c.remainingStock}{c.unit}
                       </span>
+                    )}
+                    {c.remainingStock === -1 && (
+                      <span style={{ color: '#8B7355' }}>未建档</span>
                     )}
                   </div>
                 ))}

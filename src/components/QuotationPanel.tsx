@@ -164,7 +164,6 @@ export default function QuotationPanel({ open, onClose, onOpenInventory }: Props
     <div class="val">¥${quotation.finalPrice.toFixed(2)}</div>
   </div>
   ${quotation.customerNotes ? `<div class="notes"><strong>客户备注:</strong> ${quotation.customerNotes}</div>` : ''}
-  ${quotation.internalNotes ? `<div class="notes" style="margin-top:8px;"><strong>内部备注:</strong> ${quotation.internalNotes}</div>` : ''}
   <div style="margin-top:16px; font-size:11px; color:#8B7355; text-align:center;">报价单编号: ${quotation.id} · 生成时间: ${new Date(quotation.createdAt).toLocaleString('zh-CN')}</div>
 </body>
 </html>`

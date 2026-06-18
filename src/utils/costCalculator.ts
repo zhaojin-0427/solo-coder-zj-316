@@ -148,6 +148,38 @@ export function estimateConsumption(
     })
   }
 
+  const moldSupplyQty = 1
+  const moldSupplyMaterials = inventory.filter((m) => m.category === 'moldSupply')
+  if (moldSupplyMaterials.length > 0) {
+    const moldSupply = moldSupplyMaterials[0]
+    const wasteCost = moldSupplyQty * CATEGORY_CONSUME_RATES.moldSupply.wasteRate * moldSupply.purchasePrice
+    consumptions.push({
+      materialId: moldSupply.id,
+      materialName: moldSupply.name,
+      category: 'moldSupply',
+      consumedQty: moldSupplyQty,
+      unit: moldSupply.unit,
+      unitPrice: moldSupply.purchasePrice,
+      subtotal: Math.round(moldSupplyQty * moldSupply.purchasePrice * 100) / 100,
+      remainingStock: Math.round((moldSupply.currentStock - moldSupplyQty) * 100) / 100,
+      wasteCost: Math.round(wasteCost * 100) / 100,
+    })
+  } else {
+    const defaultPrice = 2
+    const wasteCost = moldSupplyQty * CATEGORY_CONSUME_RATES.moldSupply.wasteRate * defaultPrice
+    consumptions.push({
+      materialId: '',
+      materialName: CATEGORY_LABELS.moldSupply,
+      category: 'moldSupply',
+      consumedQty: moldSupplyQty,
+      unit: '个',
+      unitPrice: defaultPrice,
+      subtotal: Math.round(moldSupplyQty * defaultPrice * 100) / 100,
+      remainingStock: -1,
+      wasteCost: Math.round(wasteCost * 100) / 100,
+    })
+  }
+
   return { consumptions, totalResinMl }
 }
 
@@ -160,11 +192,11 @@ export function generateWarnings(
   const now = Date.now()
 
   for (const c of consumptions) {
-    if (c.remainingStock >= 0 && c.remainingStock < 0) {
+    if (c.materialId && c.remainingStock < 0) {
       warnings.push({
         type: 'lowStock',
         level: 'danger',
-        message: `${c.materialName} 库存不足！消耗 ${c.consumedQty}${c.unit}，剩余 ${c.remainingStock}${c.unit}`,
+        message: `${c.materialName} 库存不足！需要 ${c.consumedQty}${c.unit}，缺 ${Math.abs(c.remainingStock)}${c.unit}`,
         materialId: c.materialId,
         materialName: c.materialName,
       })
